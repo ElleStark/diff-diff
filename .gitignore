@@ -1,3 +1,6 @@
+# ignore src folder with unused scripts
+src/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

@@ -6,17 +6,18 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import pickle
+from scipy.special import erf
 
 ###### USER INPUTS ######
 
 # Lab conditions
 temp_degC = 20  # temperature in Celsius
-rel_humidity = 0  # percent indoor relative humidity (varies a lot each day, I pulled from https://www.accuweather.com/en/us/university-of-colorado-at-boulder/80309/current-weather/107865_poi)
+rel_humidity = 50  # percent indoor relative humidity (varies a lot each day, I pulled from https://www.accuweather.com/en/us/university-of-colorado-at-boulder/80309/current-weather/107865_poi)
 
 # Define time and length scales of interest
 adv_tscale = 3  # advective timescale for defining time vector for computing concentrations
-times = np.linspace(0, adv_tscale, 30)
-r_max = 0.06 # choose largest radius for computation, m
+times = np.linspace(0.05, adv_tscale, 30)
+r_max = 0.05 # choose largest radius for computation, m
 r_vals = np.linspace(-r_max, r_max, 1000)
 tube_d = 0.01  # exit tube diameter, m
 
@@ -62,17 +63,21 @@ p_ace = ace_sat_eff * 10**(A-B/(temp_degC+C))
 print(f'Acetone vapor pressure (bar): {round(p_ace, 3)}')
 mfrac_ace = p_ace / p_atm
 
-# parameters for computing diffusion coefficient 
+# parameters for computing diffusion coefficient. D0 is diffusivity at 0 deg C and 1 atm. 
 D0_He = 6.41e-5  # m^2/s, from Boynton & Brattain International Critical Tables, Volume V, pg 62 : https://reader.library.cornell.edu/docviewer/digital?id=chla2944761_2174#page/72/mode/1up 
 d_exp_He = 1.75  # temperature ratio exponent for ocmputing diffusivity under different conditions
 D0_ace = 1.09e-5  # m^2/s, from Perry's Chemical Engineers handbook, section 2 pg 328: https://students.aiu.edu/submissions/profiles/resources/onlineBook/z5y2E6_Perry-s_Chemical_Engineers-_Handbook.pdf 
-d_exp_ace = 2  # temperature ratio exponent for ocmputing diffusivity under different conditions
+d_exp_ace = 2  # temperature ratio exponent for computing diffusivity under different conditions
+D0_water = 2.2e-5  # m^2/s, from Perry's Chemical Engineers handbook, section 2 pg 328
+d_exp_water = 1.75
 
 # compute diffusion coefficient for given conditions
 D_acetone = D0_ace * (temp_degK / basetemp_K)**d_exp_ace * (p_atm_base / p_atm)
 D_helium = D0_He * (temp_degK / basetemp_K)**d_exp_He * (p_atm_base / p_atm)
+D_water = D0_water * (temp_degK / basetemp_K)**d_exp_water * (p_atm_base / p_atm)
 print(f'Acetone diffusivity: {round(D_acetone, 7)} m^2/s')
 print(f'Helium diffusivity: {round(D_helium, 7)} m^2/s')
+print(f'water vapor diffusivity: {round(D0_water, 7)} m^2/s')
 
 # ideal gas law for computing number of moles per m3 of volume
 # PV = nRT, so n = (pV) / (RT)
@@ -114,6 +119,8 @@ c0_ace = mfrac_ace * mol_m3  # C0 in mol/m3
 print(f'Acetone C0: {round(c0_ace, 3) } mol/m3; {round(c0_ace*mol_mass_acetone/1000, 3)} kg/m3')
 c0_hel = mfrac_hel * mol_m3
 print(f'Helium C0: {round(c0_hel, 3)} mol/m3; {round(c0_hel*mol_mass_helium/1000, 3)} kg/m3')
+cinf_water = mfrac_water * mol_m3
+print(f'Water Cinf: {round(cinf_water, 3)} mol/m3')
 
 # initial number of moles such that at t=0, SG=1
 m_ace = c0_ace * (4*np.pi*D_acetone*(-ace_start))**(3/2)
@@ -122,6 +129,7 @@ m_hel = c0_hel * (4*np.pi*D_helium*(-hel_start))**(3/2)
 # initialize dictionaries for C values at selected times
 C_ace_set = dict()
 C_hel_set = dict()
+C_water_set = dict()
 sg_set = dict()
 
 for t in times:
@@ -135,8 +143,28 @@ for t in times:
     # Compute specific gravity at each time
     v_hel = C_helium / (mol_m3)
     v_ace = C_acetone / (mol_m3)
-    cda_vfrac = 1-v_hel - v_ace
-    sg_set[t] = (C_acetone * mol_mass_acetone / 1000 + C_helium * mol_mass_helium / 1000 + mol_mass_CDA*(cda_vfrac)*(mol_m3)/1000) / (mol_mass_air*mol_m3/1000)
+    totalair_vfrac = 1-v_hel - v_ace
+    # compute concentration of water vapor using simplified 1D approximation of diffusion equation for constant C at the tube boundary and a 'boundary' at the center
+    C_water = np.zeros(C_helium.shape)
+    # counter=0
+    # for r in r_vals:
+    #     if abs(r) < (tube_d/2):
+    #         C_water_val = 2* cinf_water * (erf((tube_d/2-abs(r))**2/np.sqrt(4*D_water*t)))
+    #     else:
+    #         C_water_val = cinf_water
+    #     if C_water_val > cinf_water:
+    #         C_water_val = cinf_water
+    #     C_water[counter] = C_water_val
+    #     counter += 1
+
+    C_water = cinf_water * (erf(abs(tube_d/2-abs(r_vals))/np.sqrt(4*D_water*t)))
+    C_water[C_water>cinf_water] = cinf_water
+    C_water_set[t] = C_water
+
+    water_vfrac = C_water / mol_m3
+    cda_vfrac = 1 - water_vfrac - v_ace - v_hel
+
+    sg_set[t] = (C_acetone * mol_mass_acetone / 1000 + C_helium * mol_mass_helium / 1000 + mol_mass_CDA*(cda_vfrac)*(mol_m3)/1000 + mol_mass_water*water_vfrac*mol_m3/1000) / (mol_mass_air*mol_m3/1000)
 
 # Save sets of concentration and specific gravity if desired
 file_ids = f'{temp_degC}C_{n_sigma}sigma_{rel_humidity}RH'
@@ -172,7 +200,7 @@ for time in plot_times:
     plt.ylim(0, max((C_ace_set[time][int(500)]), (C_hel_set[time][int(500)])))
     # plt.ylim(0,max(max(C_ace_set[time]*4*np.pi*(r_vals)**2), max(C_hel_set[time]*4*np.pi*(r_vals)**2)) )
     # plt.title(f't={round(time, 1)}')
-    plt.savefig(f'figures/molC2sigma_15C_ace_hel_t{round(time, 3)}.png', dpi=300)
+    # plt.savefig(f'figures/molC2sigma_{round(temp_degC, 0)}C_ace_hel_t{round(time, 3)}_{round(rel_humidity, 0)}.png', dpi=300)
     plt.show()
 
 # Compute and plot the specific gravity as a function of r for a few times of interest
@@ -193,7 +221,7 @@ for time in plot_times:
     plt.xlim(-4, 4)
     plt.xlabel('radial distance (cm)')
     plt.ylabel('specific gravity')
-    plt.savefig(f'figures/SG_15C_2sigma_t{round(time, 3)}.png', dpi=300)
+    plt.savefig(f'figures/SG_{round(temp_degC, 0)}C_2sigma_t{round(time, 3)}_{round(rel_humidity, 0)}RH.png', dpi=300)
     plt.show()
 
 

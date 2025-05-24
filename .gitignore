@@ -1,5 +1,7 @@
-# ignore src folder with unused scripts
+# ignore src folder with unused scripts along with data and figures
 src/
+figures/
+data/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

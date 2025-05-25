@@ -11,12 +11,12 @@ from scipy.special import erf
 ###### USER INPUTS ######
 
 # Lab conditions
-temp_degC = 20  # temperature in Celsius
-rel_humidity = 50  # percent indoor relative humidity (varies a lot each day, I pulled from https://www.accuweather.com/en/us/university-of-colorado-at-boulder/80309/current-weather/107865_poi)
+temp_degC = 15  # temperature in Celsius
+rel_humidity = 0  # percent indoor relative humidity (varies a lot each day, I pulled from https://www.accuweather.com/en/us/university-of-colorado-at-boulder/80309/current-weather/107865_poi)
 
 # Define time and length scales of interest
 adv_tscale = 3  # advective timescale for defining time vector for computing concentrations
-times = np.linspace(0.05, adv_tscale, 30)
+times = np.linspace(0, adv_tscale, 300)
 r_max = 0.05 # choose largest radius for computation, m
 r_vals = np.linspace(-r_max, r_max, 1000)
 tube_d = 0.01  # exit tube diameter, m
@@ -167,7 +167,7 @@ for t in times:
     sg_set[t] = (C_acetone * mol_mass_acetone / 1000 + C_helium * mol_mass_helium / 1000 + mol_mass_CDA*(cda_vfrac)*(mol_m3)/1000 + mol_mass_water*water_vfrac*mol_m3/1000) / (mol_mass_air*mol_m3/1000)
 
 # Save sets of concentration and specific gravity if desired
-file_ids = f'{temp_degC}C_{n_sigma}sigma_{rel_humidity}RH'
+file_ids = f'{temp_degC}C_{n_sigma}sigma_{rel_humidity}RH_{ace_sat_eff}vapeff'
 with open(f'data/SG_{file_ids}.pkl', 'wb') as f1:
     pickle.dump(sg_set, f1)
 
@@ -180,7 +180,7 @@ with open(f'data/Chel_{file_ids}.pkl', 'wb') as f3:
 
 # Plot comparing acetone and helium curves at a few times of interest
 # t=0, should be nearly identical, but scaled, curves with 2 sigma = 1 cm diameter
-plot_times = [times[0], times[10], times[-1]]
+plot_times = [times[5], times[100], times[-1]]
 #plot_times = times[0:10]
 for time in plot_times:
     # Conservation of mass check: multiply by 4pir^2
@@ -200,7 +200,7 @@ for time in plot_times:
     plt.ylim(0, max((C_ace_set[time][int(500)]), (C_hel_set[time][int(500)])))
     # plt.ylim(0,max(max(C_ace_set[time]*4*np.pi*(r_vals)**2), max(C_hel_set[time]*4*np.pi*(r_vals)**2)) )
     # plt.title(f't={round(time, 1)}')
-    # plt.savefig(f'figures/molC2sigma_{round(temp_degC, 0)}C_ace_hel_t{round(time, 3)}_{round(rel_humidity, 0)}.png', dpi=300)
+    plt.savefig(f'figures/molC2sigma_{round(temp_degC, 0)}C_ace_hel_t{round(time, 3)}_{round(rel_humidity, 0)}RH_{ace_sat_eff}sateff.png', dpi=300)
     plt.show()
 
 # Compute and plot the specific gravity as a function of r for a few times of interest
@@ -221,7 +221,7 @@ for time in plot_times:
     plt.xlim(-4, 4)
     plt.xlabel('radial distance (cm)')
     plt.ylabel('specific gravity')
-    plt.savefig(f'figures/SG_{round(temp_degC, 0)}C_2sigma_t{round(time, 3)}_{round(rel_humidity, 0)}RH.png', dpi=300)
+    plt.savefig(f'figures/SG_{round(temp_degC, 0)}C_2sigma_t{round(time, 3)}_{round(rel_humidity, 0)}RH_{ace_sat_eff}sateff.png', dpi=300)
     plt.show()
 
 

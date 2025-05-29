@@ -11,8 +11,8 @@ from scipy.special import erf
 ###### USER INPUTS ######
 
 # Lab conditions
-temp_degC = 15  # temperature in Celsius
-rel_humidity = 0  # percent indoor relative humidity (varies a lot each day, I pulled from https://www.accuweather.com/en/us/university-of-colorado-at-boulder/80309/current-weather/107865_poi)
+temp_degC = 20  # temperature in Celsius
+rel_humidity = 90  # percent indoor relative humidity (varies a lot each day, I pulled from https://www.accuweather.com/en/us/university-of-colorado-at-boulder/80309/current-weather/107865_poi)
 
 # Define time and length scales of interest
 adv_tscale = 3  # advective timescale for defining time vector for computing concentrations
@@ -146,24 +146,13 @@ for t in times:
     totalair_vfrac = 1-v_hel - v_ace
     # compute concentration of water vapor using simplified 1D approximation of diffusion equation for constant C at the tube boundary and a 'boundary' at the center
     C_water = np.zeros(C_helium.shape)
-    # counter=0
-    # for r in r_vals:
-    #     if abs(r) < (tube_d/2):
-    #         C_water_val = 2* cinf_water * (erf((tube_d/2-abs(r))**2/np.sqrt(4*D_water*t)))
-    #     else:
-    #         C_water_val = cinf_water
-    #     if C_water_val > cinf_water:
-    #         C_water_val = cinf_water
-    #     C_water[counter] = C_water_val
-    #     counter += 1
-
-    C_water = cinf_water * (erf(abs(tube_d/2-abs(r_vals))/np.sqrt(4*D_water*t)))
+    C_water = cinf_water * (1+erf(abs(tube_d/2-abs(r_vals))/np.sqrt(4*D_water*t)))
     C_water[C_water>cinf_water] = cinf_water
     C_water_set[t] = C_water
 
     water_vfrac = C_water / mol_m3
     cda_vfrac = 1 - water_vfrac - v_ace - v_hel
-
+    print(f'water fraction at center: {water_vfrac[500]}')
     sg_set[t] = (C_acetone * mol_mass_acetone / 1000 + C_helium * mol_mass_helium / 1000 + mol_mass_CDA*(cda_vfrac)*(mol_m3)/1000 + mol_mass_water*water_vfrac*mol_m3/1000) / (mol_mass_air*mol_m3/1000)
 
 # Save sets of concentration and specific gravity if desired
@@ -186,6 +175,9 @@ for time in plot_times:
     # Conservation of mass check: multiply by 4pir^2
     # plt.plot(r_vals, C_ace_set[time]*4*np.pi*(r_vals)**2, color='#5CB7A5', label='acetone')
     # plt.plot(r_vals, C_hel_set[time]*4*np.pi*(r_vals)**2, color='#E86F44', label='helium', linestyle='dashed')
+    # check water concentration
+    plt.plot(r_vals, C_water_set[time])
+    plt.show()
 
     plt.plot(r_vals, C_ace_set[time], color='#5CB7A5', label='acetone')
     plt.plot(r_vals, C_hel_set[time], color='#E86F44', label='helium', linestyle='dashed')

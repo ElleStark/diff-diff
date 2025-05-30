@@ -17,7 +17,7 @@ with open('data/SG_20C_2sigma_90RH_0.95vapeff.pkl', 'rb') as f2:
 
 all_times = list(sg_0RH_set.keys())
 print(len(all_times))
-plot_times = [all_times[1], all_times[3], all_times[20]]
+plot_times = [all_times[5], all_times[100], all_times[-1]]
 r_vals = r_max = 0.06 # choose radius for computation, m
 r_vals = np.linspace(-r_max, r_max, 1000)
 

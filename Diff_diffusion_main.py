@@ -12,7 +12,7 @@ from scipy.special import erf
 
 # Lab conditions
 temp_degC = 20  # temperature in Celsius
-rel_humidity = 90  # percent indoor relative humidity (varies a lot each day, I pulled from https://www.accuweather.com/en/us/university-of-colorado-at-boulder/80309/current-weather/107865_poi)
+rel_humidity = 30  # percent indoor relative humidity (varies, I pulled from https://www.accuweather.com/en/us/university-of-colorado-at-boulder/80309/current-weather/107865_poi)
 
 # Define time and length scales of interest
 adv_tscale = 3  # advective timescale for defining time vector for computing concentrations

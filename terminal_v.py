@@ -43,7 +43,7 @@ plt.savefig('figures/termvel_30RH_20C.png', dpi=300)
 plt.show()
 
 # compute time to reach terminal velocity for a few mass values
-SG_range2 = np.linspace(1, 1.15, 15)
+SG_range2 = np.array([1, 1.01, 1.05, 1.1, 1.15])
 rho_s_range2 = SG_range2 * rho_air
 mass_range = rho_s_range2 * 4/3 * np.pi * r**3
 mass_air = rho_air * 4/3 * np.pi * r**3
@@ -69,12 +69,13 @@ for mass in mass_range:
 
 # vel_lists = sorted(vel_dict.items())
 # t_list, vel_values = zip(*vel_lists)
-plt.plot(times, vel_dict[str(mass_range[0])], label=f'SG={SG_range2[0]}')
-plt.plot(times, vel_dict[str(mass_range[5])], label=f'SG={round(SG_range2[5], 2)}')
-plt.plot(times, vel_dict[str(mass_range[-1])], label=f'SG={SG_range2[-1]}')
+for i in range(len(mass_range)):
+    plt.plot(times, vel_dict[str(mass_range[i])], label=f'SG={SG_range2[i]}')
 plt.xlabel('time (s)')
 plt.ylabel('velocity (m/s)')
 plt.legend()
+plt.title('Timescale to reach terminal velocity')
+plt.savefig('figures/vel_v_time_20C_30RH.png', dpi=300)
 plt.show()
 
 

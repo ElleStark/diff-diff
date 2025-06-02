@@ -12,7 +12,7 @@ from scipy.special import erf
 
 # Lab conditions
 temp_degC = 20  # temperature in Celsius
-rel_humidity = 0  # percent indoor relative humidity (varies a lot each day, I pulled from https://www.accuweather.com/en/us/university-of-colorado-at-boulder/80309/current-weather/107865_poi)
+rel_humidity = 90  # percent indoor relative humidity (varies a lot each day, I pulled from https://www.accuweather.com/en/us/university-of-colorado-at-boulder/80309/current-weather/107865_poi)
 
 # Define time and length scales of interest
 adv_tscale = 3  # advective timescale for defining time vector for computing concentrations
@@ -61,7 +61,7 @@ def main():
 
     # compute 95% saturated acetone vapor pressure (bar) from Antoine equation
     ace_sat_eff = 0.95  # saturation efficiency (fraction of saturated concentration)
-    p_ace = ace_sat_eff * 10**(A-B/(temp_degC+C)) 
+    p_ace = ace_sat_eff * 10**(acetone_A-acetone_B/(temp_degC+acetone_C)) 
     print(f'Acetone vapor pressure (bar): {round(p_ace, 3)}')
     mfrac_ace = p_ace / p_atm
 
@@ -134,6 +134,15 @@ def main():
     C_water_set = dict()
     sg_set = dict()
 
+    # Analytical solution to diffusion INTO a sphere (see Crank, 1973: The Mathematics of Diffusion)
+    def concentration_profile(r, t, R, D, C_s, N_terms):
+        sum_series = np.zeros_like(r)
+        for n in range(1, N_terms + 1):
+            term = ((-1)**n / n) * np.sin(n * np.pi * r / R) * np.exp(-D * (n * np.pi / R)**2 * t)
+            sum_series += term
+        C = C_s * (1 + (2 * R / (np.pi * r)) * sum_series)
+        return C
+
     for t in times:
         # Compute evolving concentration (mol/m3) for acetone
         C_acetone = m_ace / (4*np.pi*D_acetone*(t-ace_start))**(3/2)*np.exp(-r_vals**2/(4*D_acetone*(t-ace_start)))
@@ -148,13 +157,18 @@ def main():
         totalair_vfrac = 1-v_hel - v_ace
         # compute concentration of water vapor using simplified 1D approximation of diffusion equation for constant C at the tube boundary and a 'boundary' at the center
         C_water = np.zeros(C_helium.shape)
-        C_water = cinf_water/2 * (1+erf((abs(r_vals)-tube_d/2)/np.sqrt(4*D_water*t)))
-        C_water[C_water>cinf_water] = cinf_water
+        # C_water = cinf_water/2 * (1+erf((abs(r_vals)-tube_d/2)/np.sqrt(4*D_water*t)))
+        # C_water[C_water>cinf_water] = cinf_water
+        if np.sqrt(D_water*t) > (0.8*tube_d/2):
+            C_water = concentration_profile(abs(r_vals), t, tube_d/2, D_water, cinf_water, 1000)
+        else:
+            # C_water = cinf_water * erf((tube_d/2-abs(r_vals))/(2 * np.sqrt(D_water*t)))
+            C_water = cinf_water/2 * (1+erf((abs(r_vals)-tube_d/2)/np.sqrt(4*D_water*t)))
         C_water_set[t] = C_water
 
         water_vfrac = C_water / mol_m3
         cda_vfrac = 1 - water_vfrac - v_ace - v_hel
-        print(f'water fraction at center: {water_vfrac[500]}')
+        # print(f'water fraction at center: {water_vfrac[500]}')
         sg_set[t] = (C_acetone * mol_mass_acetone / 1000 + C_helium * mol_mass_helium / 1000 + mol_mass_CDA*(cda_vfrac)*(mol_m3)/1000 + mol_mass_water*water_vfrac*mol_m3/1000) / (mol_mass_air*mol_m3/1000)
 
     # Save sets of concentration and specific gravity if desired
@@ -215,7 +229,7 @@ def main():
         plt.xlim(-4, 4)
         plt.xlabel('radial distance (cm)')
         plt.ylabel('specific gravity')
-        plt.savefig(f'figures/SG_{round(temp_degC, 0)}C_2sigma_t{round(time, 3)}_{round(rel_humidity, 0)}RH_{ace_sat_eff}sateff.png', dpi=300)
+        plt.savefig(f'figures/SG_{round(temp_degC, 0)}C_2sigma_t{round(time, 3)}_{round(rel_humidity, 0)}RH_Crank_{ace_sat_eff}sateff.png', dpi=300)
         plt.show()
 
 

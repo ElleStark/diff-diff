@@ -20,72 +20,87 @@ times = np.linspace(0, adv_tscale, 300)
 r_max = 0.05 # choose largest radius for computation, m
 r_vals = np.linspace(-r_max, r_max, 1000)
 tube_d = 0.01  # exit tube diameter, m
+ace_vap_eff = 0.95  # acetone vaporization efficiency (expect 95-99% for long copper tube)
 
 ##### END USER INPUTS #####
 
 def main():
 
-    # Print selected parameters for calculations
-    print(f'Temperature: {temp_degC} deg C')
-    print('--------------------------')
+    # init
+    # compute mol mass mair
+    # compute 
 
-    # temperatures in Kelvin for computations
-    temp_degK = temp_degC + 273.15
-    basetemp_K = 273.15  # standard temperature for tables of chemical properties
 
-    # atmostpheric pressure
-    p_atm = 0.83  # ambient pressure in bar for Boulder, CO
-    p_atm_base = 1.01325  # standard pressure, in bar (equal to 1 atm), for tables of chemical properties
 
-    # acetone vapor pressure calcs: Antoine equation parameters (from https://webbook.nist.gov/cgi/inchi?ID=C67641&Mask=4&Type=ANTOINE&Plot=on#ANTOINE)
-    # for log10(P)=A-(B/(T+C)) with P in bar and T in degrees C
-    acetone_A = 4.42448
-    acetone_B = 1312.253
-    acetone_C = 240.71
 
-    # molecular weights in g/mol
-    mol_mass_acetone = 58.08
-    mol_mass_helium = 4.003 
-    mol_mass_CDA = 28.96 # cold dry air from building supply
-    mol_mass_water = 18.0153
+    # # Print selected parameters for calculations
+    # print(f'Temperature: {temp_degC} deg C')
+    # print('--------------------------')
 
-    # molar mass of ambient air less than CDA due to water vapor/ relative humidity
-    # Antoine equation constants for water (from NIST https://webbook.nist.gov/cgi/cbook.cgi?ID=C7732185&Mask=4&Type=ANTOINE&Plot=on#ANTOINE)
-    water_A = 5.40221
-    water_B = 1838.675
-    water_C = 241.413
-    psat_water = 10**(water_A-water_B/(temp_degC+water_C))
-    p_water = rel_humidity/100 * psat_water 
-    mfrac_water = p_water / p_atm
-    mol_mass_air = mfrac_water * mol_mass_water + (1-mfrac_water) * mol_mass_CDA 
+    # # temperatures in Kelvin for computations
+    # temp_degK = temp_degC + 273.15
+    # basetemp_K = 273.15  # standard temperature for tables of chemical properties
 
-    # compute 95% saturated acetone vapor pressure (bar) from Antoine equation
-    ace_sat_eff = 0.95  # saturation efficiency (fraction of saturated concentration)
-    p_ace = ace_sat_eff * 10**(acetone_A-acetone_B/(temp_degC+acetone_C)) 
-    print(f'Acetone vapor pressure (bar): {round(p_ace, 3)}')
-    mfrac_ace = p_ace / p_atm
+    # # atmostpheric pressure
+    # p_atm = 0.83  # ambient pressure in bar for Boulder, CO
+    # p_atm_base = 1.01325  # standard pressure, in bar (equal to 1 atm), for tables of chemical properties
 
-    # parameters for computing diffusion coefficient. D0 is diffusivity at 0 deg C and 1 atm. 
-    D0_He = 6.41e-5  # m^2/s, from Boynton & Brattain International Critical Tables, Volume V, pg 62 : https://reader.library.cornell.edu/docviewer/digital?id=chla2944761_2174#page/72/mode/1up 
-    d_exp_He = 1.75  # temperature ratio exponent for ocmputing diffusivity under different conditions
-    D0_ace = 1.09e-5  # m^2/s, from Perry's Chemical Engineers handbook, section 2 pg 328: https://students.aiu.edu/submissions/profiles/resources/onlineBook/z5y2E6_Perry-s_Chemical_Engineers-_Handbook.pdf 
-    d_exp_ace = 2  # temperature ratio exponent for computing diffusivity under different conditions
-    D0_water = 2.2e-5  # m^2/s, from Perry's Chemical Engineers handbook, section 2 pg 328
-    d_exp_water = 1.75
+    # # acetone vapor pressure calcs: Antoine equation parameters (from https://webbook.nist.gov/cgi/inchi?ID=C67641&Mask=4&Type=ANTOINE&Plot=on#ANTOINE)
+    # # for log10(P)=A-(B/(T+C)) with P in bar and T in degrees C
+    # acetone_A = 4.42448
+    # acetone_B = 1312.253
+    # acetone_C = 240.71
+    # # alternative constants for pressure in mmHg from Physical and Chemical Equilibrium for Chemical Engineers (2012): https://onlinelibrary.wiley.com/doi/pdf/10.1002/9781118135341.app1 
+    # # acetone_A = 7.02447
+    # # acetone_B = 1161
+    # # acetone_C = 224
 
-    # compute diffusion coefficient for given conditions
-    D_acetone = D0_ace * (temp_degK / basetemp_K)**d_exp_ace * (p_atm_base / p_atm)
-    D_helium = D0_He * (temp_degK / basetemp_K)**d_exp_He * (p_atm_base / p_atm)
-    D_water = D0_water * (temp_degK / basetemp_K)**d_exp_water * (p_atm_base / p_atm)
-    print(f'Acetone diffusivity: {round(D_acetone, 7)} m^2/s')
-    print(f'Helium diffusivity: {round(D_helium, 7)} m^2/s')
-    print(f'water vapor diffusivity: {round(D0_water, 7)} m^2/s')
+    # # molecular weights in g/mol
+    # mol_mass_acetone = 58.08
+    # mol_mass_helium = 4.003 
+    # mol_mass_CDA = 28.96 # cold dry air from building supply
+    # mol_mass_water = 18.0153
 
-    # ideal gas law for computing number of moles per m3 of volume
-    # PV = nRT, so n = (pV) / (RT)
-    p = 1 # volume in m3
-    R = 0.0000821  # (m3 atm) / (mol K)
-    mol_m3 = (p_atm/1.01325) / (R*temp_degK)
+    # # molar mass of ambient air less than CDA due to water vapor/ relative humidity
+    # # Antoine equation constants for water (from NIST https://webbook.nist.gov/cgi/cbook.cgi?ID=C7732185&Mask=4&Type=ANTOINE&Plot=on#ANTOINE)
+    # water_A = 5.40221
+    # water_B = 1838.675
+    # water_C = 241.413
+
+
+    # psat_water = 10**(water_A-water_B/(temp_degC+water_C))
+    # p_water = rel_humidity/100 * psat_water 
+    # mfrac_water = p_water / p_atm
+    # mol_mass_air = mfrac_water * mol_mass_water + (1-mfrac_water) * mol_mass_CDA 
+
+    # # compute 95% saturated acetone vapor pressure (bar) from Antoine equation
+    # ace_sat_eff = 0.99  # saturation efficiency (fraction of saturated concentration)
+    # p_ace = ace_sat_eff * 10**(acetone_A-acetone_B/(temp_degC+acetone_C)) 
+    # # p_ace = p_ace * 0.00133322  # need to convert to bar from mmHg if using alternate Antoine constants!
+    # print(f'Acetone vapor pressure (bar): {round(p_ace, 3)}')
+    # mfrac_ace = p_ace / p_atm
+
+    # # parameters for computing diffusion coefficient. D0 is diffusivity at 0 deg C and 1 atm. 
+    # D0_He = 6.41e-5  # m^2/s, from Boynton & Brattain International Critical Tables, Volume V, pg 62 : https://reader.library.cornell.edu/docviewer/digital?id=chla2944761_2174#page/72/mode/1up 
+    # d_exp_He = 1.75  # temperature ratio exponent for ocmputing diffusivity under different conditions
+    # D0_ace = 1.09e-5  # m^2/s, from Perry's Chemical Engineers handbook, section 2 pg 328: https://students.aiu.edu/submissions/profiles/resources/onlineBook/z5y2E6_Perry-s_Chemical_Engineers-_Handbook.pdf 
+    # d_exp_ace = 2  # temperature ratio exponent for computing diffusivity under different conditions
+    # D0_water = 2.2e-5  # m^2/s, from Perry's Chemical Engineers handbook, section 2 pg 328
+    # d_exp_water = 1.75
+
+    # # compute diffusion coefficient for given conditions
+    # D_acetone = D0_ace * (temp_degK / basetemp_K)**d_exp_ace * (p_atm_base / p_atm)
+    # D_helium = D0_He * (temp_degK / basetemp_K)**d_exp_He * (p_atm_base / p_atm)
+    # D_water = D0_water * (temp_degK / basetemp_K)**d_exp_water * (p_atm_base / p_atm)
+    # print(f'Acetone diffusivity: {round(D_acetone, 7)} m^2/s')
+    # print(f'Helium diffusivity: {round(D_helium, 7)} m^2/s')
+    # print(f'water vapor diffusivity: {round(D0_water, 7)} m^2/s')
+
+    # # ideal gas law for computing number of moles per m3 of volume
+    # # PV = nRT, so n = (pV) / (RT)
+    # p = 1 # volume in m3
+    # R = 0.0000821  # (m3 atm) / (mol K)
+    # mol_m3 = (p_atm/1.01325) / (R*temp_degK)
 
     # initial volume ratios and mass such that at t=0, SG=1
     mfrac_CDA = (mol_mass_air - mol_mass_acetone*mfrac_ace-mol_mass_helium+mol_mass_helium*mfrac_ace) / (mol_mass_CDA-mol_mass_helium)
